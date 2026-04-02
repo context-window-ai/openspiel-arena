@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -16,6 +17,43 @@ from arena.tournament import (
     load_tournament_results,
     run_tournament,
 )
+
+
+# ---------------------------------------------------------------------------
+# Mock Agent for Testing (avoids dependency on agents/__init__.py)
+# ---------------------------------------------------------------------------
+
+
+class MockAgent:
+    """Simple mock agent for testing without external dependencies.
+    
+    This class is structurally compatible with the Agent protocol but
+    doesn't require importing from agents.base (which triggers the
+    agents/__init__.py that has optional dependencies).
+    """
+
+    def __init__(self, name: str, seed: int | None = None) -> None:
+        self.name = name
+        import random
+        self._rng = random.Random(seed)
+
+    def select_action(
+        self,
+        state_view: Any,
+        legal_actions: list[int],
+        context: Any = None,
+    ) -> int:
+        if not legal_actions:
+            raise ValueError("No legal actions")
+        return self._rng.choice(legal_actions)
+
+    def __repr__(self) -> str:
+        return f"MockAgent(name={self.name!r})"
+
+
+def _make_agents(n: int) -> list[MockAgent]:
+    """Create n mock agents for testing."""
+    return [MockAgent(name=f"agent-{i}", seed=i) for i in range(n)]
 
 
 # ---------------------------------------------------------------------------
@@ -34,13 +72,11 @@ def game():
 
 @pytest.fixture()
 def agents():
-    """Three random agents for testing."""
-    from agents.random_agent import RandomAgent
-
+    """Three mock agents for testing."""
     return [
-        RandomAgent(name="alice", seed=0),
-        RandomAgent(name="bob", seed=1),
-        RandomAgent(name="carol", seed=2),
+        MockAgent(name="alice", seed=0),
+        MockAgent(name="bob", seed=1),
+        MockAgent(name="carol", seed=2),
     ]
 
 
@@ -54,24 +90,18 @@ class TestRoundRobinWithSideSwap:
 
     def test_requires_two_agents(self):
         """Scheduler should require at least 2 agents."""
-        from agents.random_agent import RandomAgent
-
         with pytest.raises(ValueError, match="at least 2"):
-            round_robin_with_side_swap([RandomAgent(name="solo")])
+            round_robin_with_side_swap([MockAgent(name="solo")])
 
     def test_requires_positive_rounds(self):
         """Scheduler should require rounds_per_pairing >= 1."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="a"), RandomAgent(name="b")]
+        agents = [MockAgent(name="a"), MockAgent(name="b")]
         with pytest.raises(ValueError, match="at least 1"):
             round_robin_with_side_swap(agents, rounds_per_pairing=0)
 
     def test_two_agents_two_rounds(self):
         """With 2 agents and 2 rounds per pairing, should get 2 matches (one per side)."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="alice"), RandomAgent(name="bob")]
+        agents = [MockAgent(name="alice"), MockAgent(name="bob")]
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=2)
 
         assert len(pairs) == 2
@@ -82,12 +112,10 @@ class TestRoundRobinWithSideSwap:
 
     def test_three_agents_two_rounds(self):
         """With 3 agents and 2 rounds per pairing, should get 6 matches."""
-        from agents.random_agent import RandomAgent
-
         agents = [
-            RandomAgent(name="alice"),
-            RandomAgent(name="bob"),
-            RandomAgent(name="carol"),
+            MockAgent(name="alice"),
+            MockAgent(name="bob"),
+            MockAgent(name="carol"),
         ]
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=2)
 
@@ -96,9 +124,7 @@ class TestRoundRobinWithSideSwap:
 
     def test_four_agents_one_round(self):
         """With 4 agents and 1 round per pairing, should get 6 matches."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name=f"agent-{i}") for i in range(4)]
+        agents = _make_agents(4)
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=1)
 
         # 4*3/2 = 6 unordered pairs * 1 round = 6 matches
@@ -106,9 +132,7 @@ class TestRoundRobinWithSideSwap:
 
     def test_four_agents_four_rounds(self):
         """With 4 agents and 4 rounds per pairing, should get 24 matches."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name=f"agent-{i}") for i in range(4)]
+        agents = _make_agents(4)
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=4)
 
         # 4*3/2 = 6 unordered pairs * 4 rounds = 24 matches
@@ -116,9 +140,7 @@ class TestRoundRobinWithSideSwap:
 
     def test_side_balance_even_rounds(self):
         """With even rounds_per_pairing, sides should be perfectly balanced."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="alice"), RandomAgent(name="bob")]
+        agents = [MockAgent(name="alice"), MockAgent(name="bob")]
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=4)
 
         # Count directions
@@ -130,9 +152,7 @@ class TestRoundRobinWithSideSwap:
 
     def test_side_balance_odd_rounds(self):
         """With odd rounds_per_pairing, sides should be as balanced as possible."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="alice"), RandomAgent(name="bob")]
+        agents = [MockAgent(name="alice"), MockAgent(name="bob")]
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=3)
 
         # Count directions
@@ -145,9 +165,7 @@ class TestRoundRobinWithSideSwap:
 
     def test_no_self_play(self):
         """Agents should never play against themselves."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name=f"agent-{i}") for i in range(5)]
+        agents = _make_agents(5)
         pairs = round_robin_with_side_swap(agents, rounds_per_pairing=2)
 
         for a, b in pairs:
@@ -160,23 +178,17 @@ class TestCountPairings:
 
     def test_two_agents(self):
         """2 agents = 1 pairing."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="a"), RandomAgent(name="b")]
+        agents = [MockAgent(name="a"), MockAgent(name="b")]
         assert count_pairings(agents) == 1
 
     def test_three_agents(self):
         """3 agents = 3 pairings."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="a"), RandomAgent(name="b"), RandomAgent(name="c")]
+        agents = [MockAgent(name="a"), MockAgent(name="b"), MockAgent(name="c")]
         assert count_pairings(agents) == 3
 
     def test_four_agents(self):
         """4 agents = 6 pairings."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name=f"a{i}") for i in range(4)]
+        agents = [MockAgent(name=f"a{i}") for i in range(4)]
         assert count_pairings(agents) == 6
 
 
@@ -314,9 +326,7 @@ class TestRunTournament:
 
     def test_tournament_requires_two_agents(self, game):
         """Tournament should require at least 2 agents."""
-        from agents.random_agent import RandomAgent
-
-        single_agent = [RandomAgent(name="solo")]
+        single_agent = [MockAgent(name="solo")]
         with pytest.raises(ValueError, match="at least 2"):
             run_tournament(game=game, agents=single_agent)
 
@@ -416,9 +426,7 @@ class TestSideBalance:
 
     def test_two_agents_side_swap(self, game):
         """With 2 agents and 2 rounds, each should play both sides."""
-        from agents.random_agent import RandomAgent
-
-        agents = [RandomAgent(name="alice", seed=0), RandomAgent(name="bob", seed=1)]
+        agents = [MockAgent(name="alice", seed=0), MockAgent(name="bob", seed=1)]
         result, manifest = run_tournament(
             game=game,
             agents=agents,
@@ -457,14 +465,13 @@ class TestErrorHandling:
         """Failed matches should be recorded in manifest."""
         pytest.importorskip("pyspiel", reason="open_spiel not installed")
 
-        from agents.random_agent import RandomAgent
         from games.tic_tac_toe import TicTacToeGame
 
         # Create a game and agents
         game = TicTacToeGame()
-        agents = [RandomAgent(name="alice"), RandomAgent(name="bob")]
+        agents = [MockAgent(name="alice"), MockAgent(name="bob")]
 
-        # Run tournament (all should succeed since RandomAgent is well-behaved)
+        # Run tournament (all should succeed since MockAgent is well-behaved)
         result, manifest = run_tournament(
             game=game,
             agents=agents,

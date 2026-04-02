@@ -92,6 +92,16 @@ def _build_agents(game, mcts_sims: int, llm_model: str | None) -> list:
     except ImportError:
         console.print("[yellow]MCTSAgent not available, skipping MCTS agents[/yellow]")
 
+    if llm_model:
+        try:
+            from agents.llm_agent import LLMAgent, LLMAgentConfig
+            from agents.prompts import PromptStyle
+            config = LLMAgentConfig(model=llm_model, prompt_style=PromptStyle.BOARD_SUMMARY_THEN_CHOICE, memory_turns=1)
+            slug = llm_model.split("/")[-1]
+            agents.append(LLMAgent(config=config, name=f"llm-{slug}"))
+        except Exception as exc:
+            console.print(f"[yellow]LLM agent unavailable: {exc}[/yellow]")
+
     return agents
 
 
