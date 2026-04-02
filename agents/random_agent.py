@@ -10,7 +10,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from agents.base import BaseAgent
+from agents.base import ActionContext, BaseAgent
 
 
 class RandomAgent(BaseAgent):
@@ -27,10 +27,20 @@ class RandomAgent(BaseAgent):
     def __init__(self, name: str = "random", seed: int | None = None) -> None:
         super().__init__(name)
         self._rng = random.Random(seed)
+        self._seed = seed
 
-    def choose_action(self, state: Any) -> int:
+    @property
+    def seed(self) -> int | None:
+        """Return the RNG seed (for serialization)."""
+        return self._seed
+
+    def select_action(
+        self,
+        state_view: Any,
+        legal_actions: list[int],
+        context: ActionContext | None = None,
+    ) -> int:
         """Return a random legal action index."""
-        actions = state.legal_actions()
-        if not actions:
-            raise ValueError("choose_action called on a state with no legal actions")
-        return self._rng.choice(actions)
+        if not legal_actions:
+            raise ValueError("select_action called with no legal actions")
+        return self._rng.choice(legal_actions)

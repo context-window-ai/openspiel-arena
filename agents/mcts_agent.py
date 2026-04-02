@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import pyspiel
 from open_spiel.python.algorithms import mcts
 
-from agents.base import BaseAgent
+from agents.base import ActionContext, BaseAgent
 
 
 class MCTSAgent(BaseAgent):
@@ -44,6 +43,8 @@ class MCTSAgent(BaseAgent):
         label = name or f"mcts-{num_simulations}"
         super().__init__(label)
         self._player_id = player_id
+        self._num_simulations = num_simulations
+        self._seed = seed
 
         # Resolve the raw pyspiel.Game object if a wrapper was passed.
         raw_game = getattr(game, "_game", game)
@@ -59,8 +60,23 @@ class MCTSAgent(BaseAgent):
             random_state=np.random.RandomState(seed + 1),
         )
 
-    def choose_action(self, state: Any) -> int:
-        """Return the MCTS-selected action for *state*."""
+    @property
+    def num_simulations(self) -> int:
+        """Return the number of MCTS simulations per move."""
+        return self._num_simulations
+
+    @property
+    def seed(self) -> int:
+        """Return the RNG seed."""
+        return self._seed
+
+    def select_action(
+        self,
+        state_view: Any,
+        legal_actions: list[int],
+        context: ActionContext | None = None,
+    ) -> int:
+        """Return the MCTS-selected action."""
         # Resolve the raw pyspiel.State if a wrapper was passed.
-        raw_state = getattr(state, "_state", state)
+        raw_state = getattr(state_view, "_state", state_view)
         return self._bot.step(raw_state)
