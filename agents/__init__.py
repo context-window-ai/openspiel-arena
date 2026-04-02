@@ -16,6 +16,8 @@ Modules
 - mcts_agent.py    : Wraps OpenSpiel's built-in MCTS solver
 - openai_agent.py  : LLM agent backed by the OpenAI API
 - anthropic_agent.py : LLM agent backed by the Anthropic API
+- llm_agent.py     : Configurable LLM agent using OpenRouter API
+- prompts.py       : Prompt templates for LLM agents
 
 Usage example::
 
@@ -32,9 +34,32 @@ Usage example::
     config = AgentConfig("random", name="lucky", params={"seed": 42})
     agent = registry.create(config)
     print(config.registry_id())  # "random:lucky"
+
+    # LLM agent with custom configuration
+    from agents import LLMAgent, LLMAgentConfig, PromptStyle
+    config = LLMAgentConfig(
+        model="minimax/minimax-m2.5:free",
+        prompt_style=PromptStyle.LEGAL_MOVES_ONLY,
+        memory_turns=3,
+    )
+    agent = LLMAgent("my-llm", config)
 """
 
 from agents.base import ActionContext, Agent, BaseAgent
+from agents.llm_agent import (
+    FallbackMode,
+    LLMAgent,
+    LLMAgentConfig,
+    TurnRecord,
+    create_llm_agent,
+)
+from agents.prompts import (
+    PromptContext,
+    PromptStyle,
+    PromptTemplate,
+    get_template,
+    parse_action_from_response,
+)
 from agents.registry import AgentConfig, AgentRegistry, get_default_registry
 
 __all__ = [
@@ -44,4 +69,16 @@ __all__ = [
     "AgentConfig",
     "AgentRegistry",
     "get_default_registry",
+    # LLM agent
+    "LLMAgent",
+    "LLMAgentConfig",
+    "FallbackMode",
+    "TurnRecord",
+    "create_llm_agent",
+    # Prompts
+    "PromptStyle",
+    "PromptContext",
+    "PromptTemplate",
+    "get_template",
+    "parse_action_from_response",
 ]

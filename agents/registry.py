@@ -217,6 +217,8 @@ def _register_builtin_agents(registry: AgentRegistry) -> None:
     """Register built-in agent types with the registry."""
     # Import here to avoid circular imports
     from agents.random_agent import RandomAgent
+    from agents.llm_agent import LLMAgent, LLMAgentConfig, FallbackStrategy
+    from agents.prompts import PromptStyle
 
     registry.register(
         "random",
@@ -225,3 +227,27 @@ def _register_builtin_agents(registry: AgentRegistry) -> None:
             seed=cfg.params.get("seed"),
         ),
     )
+
+    def _create_llm_agent(cfg: AgentConfig) -> "LLMAgent":
+        """Factory for LLM agents."""
+        params = cfg.params
+        prompt_style = PromptStyle(params.get("prompt_style", "legal_moves_only"))
+        fallback = FallbackStrategy(params.get("fallback_strategy", "random"))
+
+        llm_config = LLMAgentConfig(
+            model=params.get("model", "minimax/minimax-m2.5:free"),
+            prompt_style=prompt_style,
+            memory_turns=params.get("memory_turns", 0),
+            temperature=params.get("temperature", 0.7),
+            max_tokens=params.get("max_tokens", 1024),
+            fallback_strategy=fallback,
+            log_responses=params.get("log_responses", False),
+            response_log_dir=params.get("response_log_dir", "logs/llm_responses"),
+        )
+
+        return LLMAgent(
+            name=cfg.name or cfg.display_name(),
+            config=llm_config,
+        )
+
+    registry.register("llm", _create_llm_agent)
