@@ -191,14 +191,16 @@ class ZeroShotPrompt(PromptTemplate):
         invalid_response: str,
         error_message: str,
     ) -> str:
-        return "\n".join([
-            "Your previous response was invalid.",
-            f"Response: {invalid_response}",
-            f"Error: {error_message}",
-            "",
-            "You MUST respond with ONLY a single number from this list:",
-            ", ".join(str(a) for a in context.legal_action_ids),
-        ])
+        return "\n".join(
+            [
+                "Your previous response was invalid.",
+                f"Response: {invalid_response}",
+                f"Error: {error_message}",
+                "",
+                "You MUST respond with ONLY a single number from this list:",
+                ", ".join(str(a) for a in context.legal_action_ids),
+            ]
+        )
 
 
 class LegalMovesOnlyPrompt(PromptTemplate):
@@ -225,11 +227,13 @@ class LegalMovesOnlyPrompt(PromptTemplate):
             lines.append("")
             lines.append(context.format_history())
 
-        lines.extend([
-            "",
-            "Choose one move from the legal moves above.",
-            "Respond with ONLY the action ID number (nothing else).",
-        ])
+        lines.extend(
+            [
+                "",
+                "Choose one move from the legal moves above.",
+                "Respond with ONLY the action ID number (nothing else).",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -239,17 +243,19 @@ class LegalMovesOnlyPrompt(PromptTemplate):
         invalid_response: str,
         error_message: str,
     ) -> str:
-        return "\n".join([
-            "Your previous response was INVALID.",
-            f"Response: {invalid_response}",
-            f"Error: {error_message}",
-            "",
-            "Choose a move from this EXACT list:",
-            context.format_legal_actions(),
-            "",
-            "IMPORTANT: Respond with ONLY the action ID number.",
-            "Valid IDs: " + ", ".join(str(a) for a in context.legal_action_ids),
-        ])
+        return "\n".join(
+            [
+                "Your previous response was INVALID.",
+                f"Response: {invalid_response}",
+                f"Error: {error_message}",
+                "",
+                "Choose a move from this EXACT list:",
+                context.format_legal_actions(),
+                "",
+                "IMPORTANT: Respond with ONLY the action ID number.",
+                "Valid IDs: " + ", ".join(str(a) for a in context.legal_action_ids),
+            ]
+        )
 
 
 class BoardSummaryThenChoicePrompt(PromptTemplate):
@@ -276,15 +282,17 @@ class BoardSummaryThenChoicePrompt(PromptTemplate):
             lines.append("")
             lines.append(context.format_history())
 
-        lines.extend([
-            "",
-            "First, briefly analyze the board position.",
-            "Then, select your move.",
-            "",
-            "Format your response as:",
-            "ANALYSIS: <your brief analysis>",
-            "MOVE: <action ID>",
-        ])
+        lines.extend(
+            [
+                "",
+                "First, briefly analyze the board position.",
+                "Then, select your move.",
+                "",
+                "Format your response as:",
+                "ANALYSIS: <your brief analysis>",
+                "MOVE: <action ID>",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -294,19 +302,23 @@ class BoardSummaryThenChoicePrompt(PromptTemplate):
         invalid_response: str,
         error_message: str,
     ) -> str:
-        return "\n".join([
-            "Your previous response was INVALID.",
-            f"Response: {invalid_response}",
-            f"Error: {error_message}",
-            "",
-            "You must include a valid MOVE line.",
-            "Choose from these legal moves:",
-            context.format_legal_actions(),
-            "",
-            "Format:",
-            "ANALYSIS: <brief analysis>",
-            "MOVE: <action ID from: " + ", ".join(str(a) for a in context.legal_action_ids) + ">",
-        ])
+        return "\n".join(
+            [
+                "Your previous response was INVALID.",
+                f"Response: {invalid_response}",
+                f"Error: {error_message}",
+                "",
+                "You must include a valid MOVE line.",
+                "Choose from these legal moves:",
+                context.format_legal_actions(),
+                "",
+                "Format:",
+                "ANALYSIS: <brief analysis>",
+                "MOVE: <action ID from: "
+                + ", ".join(str(a) for a in context.legal_action_ids)
+                + ">",
+            ]
+        )
 
 
 class ReasonThenChoicePrompt(PromptTemplate):
@@ -333,17 +345,19 @@ class ReasonThenChoicePrompt(PromptTemplate):
             lines.append("")
             lines.append(context.format_history())
 
-        lines.extend([
-            "",
-            "Think through your decision carefully:",
-            "1. What is the current game state?",
-            "2. What are your strategic options?",
-            "3. Which move gives you the best position?",
-            "",
-            "Format your response as:",
-            "REASONING: <your step-by-step reasoning>",
-            "CHOICE: <action ID>",
-        ])
+        lines.extend(
+            [
+                "",
+                "Think through your decision carefully:",
+                "1. What is the current game state?",
+                "2. What are your strategic options?",
+                "3. Which move gives you the best position?",
+                "",
+                "Format your response as:",
+                "REASONING: <your step-by-step reasoning>",
+                "CHOICE: <action ID>",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -353,19 +367,23 @@ class ReasonThenChoicePrompt(PromptTemplate):
         invalid_response: str,
         error_message: str,
     ) -> str:
-        return "\n".join([
-            "Your previous response was INVALID.",
-            f"Response: {invalid_response}",
-            f"Error: {error_message}",
-            "",
-            "You must include a valid CHOICE line.",
-            "Choose from these legal moves:",
-            context.format_legal_actions(),
-            "",
-            "Format:",
-            "REASONING: <your reasoning>",
-            "CHOICE: <action ID from: " + ", ".join(str(a) for a in context.legal_action_ids) + ">",
-        ])
+        return "\n".join(
+            [
+                "Your previous response was INVALID.",
+                f"Response: {invalid_response}",
+                f"Error: {error_message}",
+                "",
+                "You must include a valid CHOICE line.",
+                "Choose from these legal moves:",
+                context.format_legal_actions(),
+                "",
+                "Format:",
+                "REASONING: <your reasoning>",
+                "CHOICE: <action ID from: "
+                + ", ".join(str(a) for a in context.legal_action_ids)
+                + ">",
+            ]
+        )
 
 
 class CriticThenChoicePrompt(PromptTemplate):
@@ -392,18 +410,20 @@ class CriticThenChoicePrompt(PromptTemplate):
             lines.append("")
             lines.append(context.format_history())
 
-        lines.extend([
-            "",
-            "Use a two-step decision process:",
-            "1. PROPOSE: Identify a candidate move",
-            "2. CRITIQUE: Evaluate potential issues with your proposal",
-            "3. FINAL: Make your final decision (can be same or different)",
-            "",
-            "Format your response as:",
-            "PROPOSE: <action ID>",
-            "CRITIQUE: <evaluation of the proposed move>",
-            "FINAL: <action ID>",
-        ])
+        lines.extend(
+            [
+                "",
+                "Use a two-step decision process:",
+                "1. PROPOSE: Identify a candidate move",
+                "2. CRITIQUE: Evaluate potential issues with your proposal",
+                "3. FINAL: Make your final decision (can be same or different)",
+                "",
+                "Format your response as:",
+                "PROPOSE: <action ID>",
+                "CRITIQUE: <evaluation of the proposed move>",
+                "FINAL: <action ID>",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -413,20 +433,24 @@ class CriticThenChoicePrompt(PromptTemplate):
         invalid_response: str,
         error_message: str,
     ) -> str:
-        return "\n".join([
-            "Your previous response was INVALID.",
-            f"Response: {invalid_response}",
-            f"Error: {error_message}",
-            "",
-            "You must include a valid FINAL line.",
-            "Choose from these legal moves:",
-            context.format_legal_actions(),
-            "",
-            "Format:",
-            "PROPOSE: <action ID>",
-            "CRITIQUE: <your evaluation>",
-            "FINAL: <action ID from: " + ", ".join(str(a) for a in context.legal_action_ids) + ">",
-        ])
+        return "\n".join(
+            [
+                "Your previous response was INVALID.",
+                f"Response: {invalid_response}",
+                f"Error: {error_message}",
+                "",
+                "You must include a valid FINAL line.",
+                "Choose from these legal moves:",
+                context.format_legal_actions(),
+                "",
+                "Format:",
+                "PROPOSE: <action ID>",
+                "CRITIQUE: <your evaluation>",
+                "FINAL: <action ID from: "
+                + ", ".join(str(a) for a in context.legal_action_ids)
+                + ">",
+            ]
+        )
 
 
 # Registry of prompt templates
@@ -462,9 +486,7 @@ def get_template(style: PromptStyle | str) -> PromptTemplate:
             style = PromptStyle(style)
         except ValueError:
             valid = [s.value for s in PromptStyle]
-            raise ValueError(
-                f"Unknown prompt style: {style!r}. Valid styles: {valid}"
-            ) from None
+            raise ValueError(f"Unknown prompt style: {style!r}. Valid styles: {valid}") from None
 
     template_class = _PROMPT_TEMPLATES.get(style)
     if template_class is None:

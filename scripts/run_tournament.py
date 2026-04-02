@@ -8,11 +8,11 @@ Usage
 -----
 Direct::
 
-    python scripts/run_tournament.py --game tic_tac_toe --rounds 5
+    python scripts/run_tournament.py --game tic_tac_toe --rounds-per-pairing 2
 
 Via the installed ``arena`` console script (after ``pip install -e .``)::
 
-    arena --game tic_tac_toe --rounds 5 --results-dir my_results/
+    arena --game tic_tac_toe --rounds-per-pairing 2 --results-dir my_results/
 """
 
 from __future__ import annotations
@@ -43,6 +43,58 @@ def _configure_logging(level: str) -> None:
     )
 
 
+def _get_game(game_name: str):
+    """Factory function to create a game wrapper by name."""
+    if game_name == "tic_tac_toe":
+        from games.tic_tac_toe import TicTacToeGame
+
+        return TicTacToeGame()
+    elif game_name == "breakthrough":
+        from games.breakthrough import BreakthroughGame
+
+        return BreakthroughGame()
+    else:
+        console.print(f"[red]Unsupported game: {game_name!r}[/red]")
+        console.print("Currently supported games: tic_tac_toe, breakthrough")
+        sys.exit(1)
+
+
+def _build_agents(game, mcts_sims: int, llm_model: str | None) -> list:
+    """Build the roster of agents for the tournament."""
+    from agents.random_agent import RandomAgent
+
+    agents = [
+        RandomAgent(name="random", seed=0),
+    ]
+
+    # Add MCTS agents
+    try:
+        from agents.mcts_agent import MCTSAgent
+
+        agents.append(
+            MCTSAgent(
+                game=game,
+                num_simulations=mcts_sims,
+                player_id=0,
+                name=f"mcts-{mcts_sims}",
+                seed=42,
+            )
+        )
+        agents.append(
+            MCTSAgent(
+                game=game,
+                num_simulations=mcts_sims,
+                player_id=1,
+                name=f"mcts-{mcts_sims}-p1",
+                seed=7,
+            )
+        )
+    except ImportError:
+        console.print("[yellow]MCTSAgent not available, skipping MCTS agents[/yellow]")
+
+    return agents
+
+
 @click.command()
 @click.option(
     "--game",
@@ -51,16 +103,16 @@ def _configure_logging(level: str) -> None:
     help="OpenSpiel game name to use for all matches.",
 )
 @click.option(
-    "--rounds",
-    default=1,
+    "--rounds-per-pairing",
+    default=2,
     show_default=True,
     type=int,
-    help="How many times each ordered agent pair plays.",
+    help="How many matches per unordered agent pair (2 = once per side).",
 )
 @click.option(
     "--results-dir",
     default=None,
-    help="Directory for match result JSON files (default: $ARENA_RESULTS_DIR or results/).",
+    help="Directory for match result files (default: $ARENA_RESULTS_DIR or results/).",
 )
 @click.option(
     "--mcts-sims",
@@ -70,16 +122,28 @@ def _configure_logging(level: str) -> None:
     help="MCTS rollouts per move for the MCTS agent.",
 )
 @click.option(
+    "--llm-model",
+    default=None,
+    help="LLM model identifier for LLM agent (e.g., 'gpt-4').",
+)
+@click.option(
     "--log-level",
     default=None,
     help="Logging verbosity (default: $ARENA_LOG_LEVEL or INFO).",
 )
+@click.option(
+    "--run-id",
+    default=None,
+    help="Unique identifier for this tournament run (auto-generated if omitted).",
+)
 def main(
     game: str,
-    rounds: int,
+    rounds_per_pairing: int,
     results_dir: str | None,
     mcts_sims: int,
+    llm_model: str | None,
     log_level: str | None,
+    run_id: str | None,
 ) -> None:
     """Run an openspiel-arena tournament and print Elo ratings."""
 
@@ -89,85 +153,91 @@ def main(
     # ------------------------------------------------------------------
     # Build game wrapper
     # ------------------------------------------------------------------
-    if game == "tic_tac_toe":
-        from games.tic_tac_toe import TicTacToeGame
-        game_obj = TicTacToeGame()
-    else:
-        console.print(f"[red]Unsupported game: {game!r}[/red]")
-        console.print("Currently supported games: tic_tac_toe")
-        sys.exit(1)
+    game_obj = _get_game(game)
 
     # ------------------------------------------------------------------
     # Build agent roster
     # ------------------------------------------------------------------
-    from agents.mcts_agent import MCTSAgent
-    from agents.random_agent import RandomAgent
-
-    agents = [
-        RandomAgent(name="random", seed=0),
-        MCTSAgent(
-            game=game_obj,
-            num_simulations=mcts_sims,
-            player_id=0,
-            name=f"mcts-{mcts_sims}",
-            seed=42,
-        ),
-        MCTSAgent(
-            game=game_obj,
-            num_simulations=mcts_sims,
-            player_id=1,
-            name=f"mcts-{mcts_sims}-p1",
-            seed=7,
-        ),
-    ]
+    agents = _build_agents(game_obj, mcts_sims, llm_model)
 
     console.rule("[bold blue]openspiel-arena[/bold blue]")
-    console.print(f"Game      : [cyan]{game_obj.name}[/cyan]")
-    console.print(f"Agents    : {', '.join(a.name for a in agents)}")
-    console.print(f"Rounds    : {rounds}")
+    console.print(f"Game              : [cyan]{game_obj.name}[/cyan]")
+    console.print(f"Agents            : {', '.join(a.name for a in agents)}")
+    console.print(f"Rounds per pairing: {rounds_per_pairing}")
     console.print()
+
+    # ------------------------------------------------------------------
+    # Determine output directory
+    # ------------------------------------------------------------------
+    out_dir = Path(results_dir or os.getenv("ARENA_RESULTS_DIR", "results/"))
 
     # ------------------------------------------------------------------
     # Run tournament
     # ------------------------------------------------------------------
     from arena.tournament import run_tournament
 
-    tournament_result = run_tournament(game=game_obj, agents=agents, rounds=rounds)
+    tournament_result, manifest = run_tournament(
+        game=game_obj,
+        agents=agents,
+        rounds_per_pairing=rounds_per_pairing,
+        results_dir=out_dir,
+        run_id=run_id,
+    )
 
     # ------------------------------------------------------------------
-    # Persist results
+    # Display manifest summary
     # ------------------------------------------------------------------
-    out_dir = Path(results_dir or os.getenv("ARENA_RESULTS_DIR", "results/"))
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for match in tournament_result.matches:
-        (out_dir / f"{match.match_id}.json").write_text(
-            json.dumps(match.to_dict(), indent=2), encoding="utf-8"
-        )
+    console.print()
+    console.print("[bold]Tournament Summary[/bold]")
+    console.print(f"  Run ID           : {manifest.run_id}")
+    console.print(f"  Total matches    : {manifest.total_matches}")
+    console.print(f"  Completed        : {manifest.completed_matches}")
+    console.print(f"  Failed           : {manifest.failed_matches}")
+    console.print(f"  Duration         : {manifest.duration_seconds:.1f}s")
+    if manifest.results_path:
+        console.print(f"  Results CSV      : {manifest.results_path}")
+    console.print()
 
     # ------------------------------------------------------------------
     # Compute and display Elo ratings
     # ------------------------------------------------------------------
     from ratings.elo import update_elo
 
-    ratings = update_elo(tournament_result.matches)
+    # Only use completed matches for rating
+    completed_matches = [
+        m for m in tournament_result.matches
+        if not m.termination_reason.startswith("error")
+    ]
 
-    match_counts: dict[str, int] = {}
-    for r in tournament_result.matches:
-        match_counts[r.agent_a] = match_counts.get(r.agent_a, 0) + 1
-        match_counts[r.agent_b] = match_counts.get(r.agent_b, 0) + 1
+    if completed_matches:
+        ratings = update_elo(completed_matches)
 
-    table = Table(title="Final Elo Ratings", show_header=True)
-    table.add_column("Agent", style="cyan")
-    table.add_column("Elo", justify="right", style="green")
-    table.add_column("Matches", justify="right")
+        match_counts: dict[str, int] = {}
+        for r in completed_matches:
+            match_counts[r.agent_a] = match_counts.get(r.agent_a, 0) + 1
+            match_counts[r.agent_b] = match_counts.get(r.agent_b, 0) + 1
 
-    for agent_name, elo in sorted(ratings.items(), key=lambda x: -x[1]):
-        table.add_row(agent_name, f"{elo:.1f}", str(match_counts.get(agent_name, 0)))
+        table = Table(title="Final Elo Ratings", show_header=True)
+        table.add_column("Agent", style="cyan")
+        table.add_column("Elo", justify="right", style="green")
+        table.add_column("Matches", justify="right")
 
-    console.print()
-    console.print(table)
+        for agent_name, elo in sorted(ratings.items(), key=lambda x: -x[1]):
+            table.add_row(
+                agent_name, f"{elo:.1f}", str(match_counts.get(agent_name, 0))
+            )
+
+        console.print(table)
+    else:
+        console.print("[yellow]No completed matches to rate.[/yellow]")
+
     n = len(tournament_result.matches)
     console.print(f"\n[dim]{n} match(es) written to: {out_dir}[/dim]")
+
+    # Print manifest path
+    if manifest.results_path:
+        manifest_path = Path(out_dir) / f"manifest_{manifest.run_id}.json"
+        console.print(f"[dim]Manifest saved to: {manifest_path}[/dim]")
 
 
 if __name__ == "__main__":
