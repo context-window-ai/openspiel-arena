@@ -20,26 +20,27 @@ def load_results(results_dir: str | Path = "results/") -> list[MatchResult]:
     ----------
     results_dir:
         Path to the directory produced by the arena (default: ``results/``).
+        Raises ``FileNotFoundError`` if the directory does not exist.
 
     Returns
     -------
     list[MatchResult]
-        Sorted chronologically by ``timestamp``.
+        Sorted chronologically by the ``timestamp`` field.
 
     Raises
     ------
     FileNotFoundError
-        If *results_dir* does not exist.
+        When *results_dir* does not exist on disk.
     """
-    dir_path = Path(results_dir)
-    if not dir_path.exists():
-        raise FileNotFoundError(f"Results directory not found: {dir_path.resolve()}")
+    path = Path(results_dir)
+    if not path.exists():
+        raise FileNotFoundError(f"Results directory not found: {path}")
 
     matches: list[MatchResult] = []
-    for json_file in sorted(dir_path.glob("*.json")):
-        data = json.loads(json_file.read_text())
+    for json_file in sorted(path.glob("*.json")):
+        data = json.loads(json_file.read_text(encoding="utf-8"))
         matches.append(MatchResult.from_dict(data))
 
-    # Sort by played_at string (ISO-8601 sorts lexicographically)
-    matches.sort(key=lambda m: m.played_at)
+    # Sort chronologically; fall back to alphabetical match_id for stable sort.
+    matches.sort(key=lambda r: (r.timestamp, r.match_id))
     return matches

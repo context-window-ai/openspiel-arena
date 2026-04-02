@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pyspiel
 from open_spiel.python.algorithms import mcts
 
@@ -51,8 +52,11 @@ class MCTSAgent(BaseAgent):
             game=raw_game,
             uct_c=2,
             max_simulations=num_simulations,
-            evaluator=mcts.RandomRolloutEvaluator(random_state=seed),
-            random_state=seed,
+            evaluator=mcts.RandomRolloutEvaluator(
+                n_rollouts=1,
+                random_state=np.random.RandomState(seed),
+            ),
+            random_state=np.random.RandomState(seed + 1),
         )
 
     def choose_action(self, state: Any) -> int:

@@ -17,9 +17,11 @@ Via the installed ``arena`` console script (after ``pip install -e .``)::
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import click
 from dotenv import load_dotenv
@@ -98,8 +100,8 @@ def main(
     # ------------------------------------------------------------------
     # Build agent roster
     # ------------------------------------------------------------------
-    from agents.random_agent import RandomAgent
     from agents.mcts_agent import MCTSAgent
+    from agents.random_agent import RandomAgent
 
     agents = [
         RandomAgent(name="random", seed=0),
@@ -130,32 +132,42 @@ def main(
     # ------------------------------------------------------------------
     from arena.tournament import run_tournament
 
-    out = results_dir or os.getenv("ARENA_RESULTS_DIR", "results/")
-    results = run_tournament(agents, game_obj, rounds=rounds, results_dir=out)
+    tournament_result = run_tournament(game=game_obj, agents=agents, rounds=rounds)
+
+    # ------------------------------------------------------------------
+    # Persist results
+    # ------------------------------------------------------------------
+    out_dir = Path(results_dir or os.getenv("ARENA_RESULTS_DIR", "results/"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for match in tournament_result.matches:
+        (out_dir / f"{match.match_id}.json").write_text(
+            json.dumps(match.to_dict(), indent=2), encoding="utf-8"
+        )
 
     # ------------------------------------------------------------------
     # Compute and display Elo ratings
     # ------------------------------------------------------------------
     from ratings.elo import update_elo
 
-    ratings = update_elo(results)
+    ratings = update_elo(tournament_result.matches)
+
+    match_counts: dict[str, int] = {}
+    for r in tournament_result.matches:
+        match_counts[r.agent_a] = match_counts.get(r.agent_a, 0) + 1
+        match_counts[r.agent_b] = match_counts.get(r.agent_b, 0) + 1
 
     table = Table(title="Final Elo Ratings", show_header=True)
     table.add_column("Agent", style="cyan")
     table.add_column("Elo", justify="right", style="green")
     table.add_column("Matches", justify="right")
 
-    match_counts: dict[str, int] = {}
-    for r in results:
-        match_counts[r.agent_a] = match_counts.get(r.agent_a, 0) + 1
-        match_counts[r.agent_b] = match_counts.get(r.agent_b, 0) + 1
-
     for agent_name, elo in sorted(ratings.items(), key=lambda x: -x[1]):
         table.add_row(agent_name, f"{elo:.1f}", str(match_counts.get(agent_name, 0)))
 
     console.print()
     console.print(table)
-    console.print(f"\n[dim]Results written to: {out}[/dim]")
+    n = len(tournament_result.matches)
+    console.print(f"\n[dim]{n} match(es) written to: {out_dir}[/dim]")
 
 
 if __name__ == "__main__":

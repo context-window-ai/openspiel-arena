@@ -107,7 +107,7 @@ def plot_win_rate_heatmap(
     for r in all_results:
         i, j = idx[r.agent_a], idx[r.agent_b]
         totals[i, j] += 1
-        outcome = r.resolved_outcome()
+        outcome = r.outcome
         if outcome == "win":
             wins[i, j] += 1
         elif outcome == "draw":
