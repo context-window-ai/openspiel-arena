@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openspiel-arena"
+version = "0.1.0"
+description = "Tournament harness comparing OpenSpiel search agents and LLM agents on board games"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+dependencies = [
+    # Game engine
+    "open_spiel>=1.4",           # pre-built wheels for Linux/macOS on PyPI
+
+    # LLM clients
+    "openai>=1.30",
+    "anthropic>=0.28",
+
+    # Data & ratings
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "glicko2>=1.0",
+
+    # Config / env
+    "python-dotenv>=1.0",
+
+    # CLI
+    "click>=8.1",
+
+    # Logging / display
+    "rich>=13.0",
+
+    # Utilities
+    "tenacity>=8.3",   # retry logic for LLM calls
+    "tqdm>=4.66",      # progress bars
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "types-tqdm",
+]
+
+analysis = [
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "jupyterlab>=4.2",
+]
+
+[project.scripts]
+arena = "scripts.run_tournament:main"
+
+# ---------------------------------------------------------------------------
+# Setuptools package discovery
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["games*", "agents*", "arena*", "ratings*", "analysis*", "tests*", "scripts*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

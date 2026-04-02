@@ -188,6 +188,10 @@ cython_debug/
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
+# openspiel-arena runtime outputs
+results/
+!results/.gitkeep
+
 # Ruff stuff:
 .ruff_cache/
 
@@ -205,3 +209,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Tournament results (keep the directory, ignore generated files)
+results/*.json
