@@ -121,6 +121,15 @@ class MatchResult:
             return "draw"
         return "win" if self.winner == self.agent_a else "loss"
 
+    def resolved_outcome(self) -> Literal["win", "loss", "draw"]:
+        """Alias for :attr:`outcome`; used by the rating engines."""
+        return self.outcome
+
+    @property
+    def played_at(self) -> str:
+        """Alias for :attr:`timestamp` (ISO-8601 UTC string)."""
+        return self.timestamp
+
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
