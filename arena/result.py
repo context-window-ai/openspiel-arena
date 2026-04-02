@@ -64,6 +64,14 @@ class MatchResult:
         "returns",
         "timestamp",
         "moves",
+        # New fields for canonical results logging
+        "seed",
+        "agent_a_side",
+        "agent_b_side",
+        "invalid_move_retries",
+        "agent_a_latency_ms",
+        "agent_b_latency_ms",
+        "termination_reason",
     )
 
     def __init__(
@@ -78,6 +86,14 @@ class MatchResult:
         returns: list[float] | None = None,
         timestamp: str | None = None,
         moves: list[int] | None = None,
+        # New fields for canonical results logging
+        seed: int | None = None,
+        agent_a_side: int | None = None,
+        agent_b_side: int | None = None,
+        invalid_move_retries: int = 0,
+        agent_a_latency_ms: float | None = None,
+        agent_b_latency_ms: float | None = None,
+        termination_reason: str = "normal",
     ) -> None:
         self.game_name = game_name
         self.agent_a = agent_a
@@ -89,6 +105,15 @@ class MatchResult:
 
         # num_moves: explicit value wins; otherwise infer from move list
         self.num_moves = num_moves if num_moves is not None else len(self.moves)
+
+        # New fields
+        self.seed = seed
+        self.agent_a_side = agent_a_side
+        self.agent_b_side = agent_b_side
+        self.invalid_move_retries = invalid_move_retries
+        self.agent_a_latency_ms = agent_a_latency_ms
+        self.agent_b_latency_ms = agent_b_latency_ms
+        self.termination_reason = termination_reason
 
         # Resolve winner from whichever argument was provided
         if winner is not _MISSING:
@@ -130,6 +155,16 @@ class MatchResult:
         """Alias for :attr:`timestamp` (ISO-8601 UTC string)."""
         return self.timestamp
 
+    @property
+    def run_id(self) -> str:
+        """Alias for :attr:`match_id` for canonical schema compatibility."""
+        return self.match_id
+
+    @property
+    def game(self) -> str:
+        """Alias for :attr:`game_name` for canonical schema compatibility."""
+        return self.game_name
+
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
@@ -146,6 +181,14 @@ class MatchResult:
             "returns": self.returns,
             "timestamp": self.timestamp,
             "moves": self.moves,
+            # New fields
+            "seed": self.seed,
+            "agent_a_side": self.agent_a_side,
+            "agent_b_side": self.agent_b_side,
+            "invalid_move_retries": self.invalid_move_retries,
+            "agent_a_latency_ms": self.agent_a_latency_ms,
+            "agent_b_latency_ms": self.agent_b_latency_ms,
+            "termination_reason": self.termination_reason,
         }
 
     @classmethod
@@ -156,6 +199,19 @@ class MatchResult:
         ``winner`` is the canonical stored field.
         """
         cleaned = {k: v for k, v in data.items() if k != "outcome"}
+        # Handle missing new fields with defaults for backward compatibility
+        defaults = {
+            "seed": None,
+            "agent_a_side": None,
+            "agent_b_side": None,
+            "invalid_move_retries": 0,
+            "agent_a_latency_ms": None,
+            "agent_b_latency_ms": None,
+            "termination_reason": "normal",
+        }
+        for key, default_value in defaults.items():
+            if key not in cleaned:
+                cleaned[key] = default_value
         return cls(**cleaned)
 
     # ------------------------------------------------------------------
