@@ -59,7 +59,7 @@ def _get_game(game_name: str):
         sys.exit(1)
 
 
-def _build_agents(game, mcts_sims: int, llm_model: str | None) -> list:
+def _build_agents(game, mcts_sims: int, llm_models: tuple) -> list:
     """Build the roster of agents for the tournament."""
     from agents.random_agent import RandomAgent
 
@@ -92,7 +92,7 @@ def _build_agents(game, mcts_sims: int, llm_model: str | None) -> list:
     except ImportError:
         console.print("[yellow]MCTSAgent not available, skipping MCTS agents[/yellow]")
 
-    if llm_model:
+    for llm_model in llm_models:
         try:
             from agents.llm_agent import LLMAgent, LLMAgentConfig
             from agents.prompts import PromptStyle
@@ -133,8 +133,8 @@ def _build_agents(game, mcts_sims: int, llm_model: str | None) -> list:
 )
 @click.option(
     "--llm-model",
-    default=None,
-    help="LLM model identifier for LLM agent (e.g., 'gpt-4').",
+    multiple=True,
+    help="LLM model identifier (repeatable). e.g. --llm-model openai/gpt-4o-mini --llm-model openai/gpt-5-mini",
 )
 @click.option(
     "--log-level",
@@ -151,7 +151,7 @@ def main(
     rounds_per_pairing: int,
     results_dir: str | None,
     mcts_sims: int,
-    llm_model: str | None,
+    llm_model: tuple,
     log_level: str | None,
     run_id: str | None,
 ) -> None:
