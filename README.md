@@ -114,15 +114,71 @@ pytest --cov=. --cov-report=term-missing
 
 ---
 
+## Rating Systems: Elo vs AlphaRank
+
+This project supports two complementary approaches to rating agents:
+
+### Elo Rating
+
+**Best for:** Transitive games where skill is hierarchical.
+
+Elo assumes that if agent A beats agent B, and agent B beats agent C, then agent A should beat agent C. This works well for:
+- Chess, Go, and most board games
+- Direct skill comparisons
+- Simple leaderboard rankings
+
+**Usage:**
+```bash
+python3 -m ratings.elo results/matches.csv
+```
+
+### AlphaRank
+
+**Best for:** Non-transitive games with cyclic win patterns.
+
+Some games exhibit "Rock-Paper-Scissors" dynamics where A beats B, B beats C, but C beats A. Elo struggles here because no clear hierarchy exists. AlphaRank:
+- Uses evolutionary game theory to find equilibrium strategies
+- Produces a population distribution over agents
+- Handles cyclic win patterns naturally
+- Identifies which strategies dominate in the meta-game
+
+**Usage:**
+```python
+from ratings.payoff_matrix import compute_payoff_matrix_from_csv
+from analysis.alpharank import compute_alpha_rank
+
+matrix = compute_payoff_matrix_from_csv('results/matches.csv')
+ranking = compute_alpha_rank(matrix.to_numpy())
+```
+
+See `analysis/alpharank.ipynb` for a full interactive example.
+
+### Comparison
+
+| Criterion | Elo | AlphaRank |
+|-----------|-----|----------|
+| Transitive games | ✅ Best | ✅ Works |
+| Non-transitive games | ❌ Fails | ✅ Best |
+| Simple interpretation | ✅ Easy | ⚠️ Moderate |
+| Computational cost | ✅ O(n) | ⚠️ O(n²) |
+| Single rating number | ✅ Yes | ❌ Distribution |
+| Handles cycles | ❌ No | ✅ Yes |
+
+**Recommendation:** Use Elo for quick leaderboards and when skill is clearly hierarchical. Use AlphaRank when analyzing complex meta-games with strategic diversity.
+
+---
+
 ## Roadmap
 
-- [ ] Tic-tac-toe game wrapper (baseline game)
-- [ ] Random agent
-- [ ] OpenSpiel MCTS agent
-- [ ] LLM agent (OpenAI)
-- [ ] LLM agent (Anthropic)
-- [ ] Elo rating computation
-- [ ] Glicko-2 rating computation
+- [x] Tic-tac-toe game wrapper (baseline game)
+- [x] Random agent
+- [x] OpenSpiel MCTS agent
+- [x] LLM agent (OpenAI)
+- [x] LLM agent (Anthropic)
+- [x] Elo rating computation
+- [x] Glicko-2 rating computation
+- [x] Payoff matrix computation
+- [x] AlphaRank analysis
 - [ ] Analysis notebook: rating convergence curves
 - [ ] Analysis notebook: move-quality comparison
 
