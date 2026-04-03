@@ -207,6 +207,7 @@ class LLMAgent(BaseAgent):
         self._client = OpenAI(
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
+            timeout=60.0,
         )
 
         # Create debug directory if specified
