@@ -191,6 +191,7 @@ cython_debug/
 # openspiel-arena runtime outputs
 results/
 !results/.gitkeep
+output/
 
 # Ruff stuff:
 .ruff_cache/
