@@ -59,8 +59,36 @@ def _get_game(game_name: str):
         sys.exit(1)
 
 
-def _build_agents(game, mcts_sims: int, llm_models: tuple) -> list:
-    """Build the roster of agents for the tournament."""
+def _build_agents(
+    game,
+    mcts_sims: int,
+    llm_models: tuple,
+    reasoning_effort: str | None = None,
+    memory_turns: int = 1,
+    prompt_style: str = "board_summary_then_choice",
+) -> list:
+    """Build the roster of agents for the tournament.
+
+    Parameters
+    ----------
+    game:
+        The game wrapper instance.
+    mcts_sims:
+        Number of MCTS simulations per move.
+    llm_models:
+        Tuple of LLM model identifiers.
+    reasoning_effort:
+        Optional reasoning effort for supported models.
+    memory_turns:
+        Number of recent turns to include in LLM context (0 = stateless).
+    prompt_style:
+        Prompt style string matching a PromptStyle enum value.
+
+    Returns
+    -------
+    list
+        List of agent instances.
+    """
     from agents.random_agent import RandomAgent
 
     agents = [
@@ -96,9 +124,20 @@ def _build_agents(game, mcts_sims: int, llm_models: tuple) -> list:
         try:
             from agents.llm_agent import LLMAgent, LLMAgentConfig
             from agents.prompts import PromptStyle
-            config = LLMAgentConfig(model=llm_model, prompt_style=PromptStyle.BOARD_SUMMARY_THEN_CHOICE, memory_turns=1)
+
+            ps = PromptStyle(prompt_style)
+            config = LLMAgentConfig(
+                model=llm_model,
+                prompt_style=ps,
+                memory_turns=memory_turns,
+                reasoning_effort=reasoning_effort,
+            )
             slug = llm_model.split("/")[-1]
-            agents.append(LLMAgent(config=config, name=f"llm-{slug}"))
+            effort_tag = f"-{reasoning_effort}" if reasoning_effort else ""
+            mem_tag = f"-mem{memory_turns}"
+            agents.append(
+                LLMAgent(config=config, name=f"llm-{slug}{effort_tag}{mem_tag}")
+            )
         except Exception as exc:
             console.print(f"[yellow]LLM agent unavailable: {exc}[/yellow]")
 
@@ -137,6 +176,32 @@ def _build_agents(game, mcts_sims: int, llm_models: tuple) -> list:
     help="LLM model identifier (repeatable). e.g. --llm-model openai/gpt-4o-mini --llm-model openai/gpt-5-mini",
 )
 @click.option(
+    "--reasoning-effort",
+    default=None,
+    type=click.Choice(["low", "medium", "high", "xhigh"]),
+    help="Reasoning effort for LLM agents that support it (low/medium/high).",
+)
+@click.option(
+    "--memory-turns",
+    default=1,
+    show_default=True,
+    type=int,
+    help="Number of recent turns to include in LLM context (0 = stateless).",
+)
+@click.option(
+    "--prompt-style",
+    default="board_summary_then_choice",
+    show_default=True,
+    type=click.Choice([
+        "zero_shot",
+        "legal_moves_only",
+        "board_summary_then_choice",
+        "reason_then_choice",
+        "critic_then_choice",
+    ]),
+    help="Prompt template style for LLM agents.",
+)
+@click.option(
     "--log-level",
     default=None,
     help="Logging verbosity (default: $ARENA_LOG_LEVEL or INFO).",
@@ -152,6 +217,9 @@ def main(
     results_dir: str | None,
     mcts_sims: int,
     llm_model: tuple,
+    reasoning_effort: str | None,
+    memory_turns: int,
+    prompt_style: str,
     log_level: str | None,
     run_id: str | None,
 ) -> None:
@@ -168,7 +236,9 @@ def main(
     # ------------------------------------------------------------------
     # Build agent roster
     # ------------------------------------------------------------------
-    agents = _build_agents(game_obj, mcts_sims, llm_model)
+    agents = _build_agents(
+        game_obj, mcts_sims, llm_model, reasoning_effort, memory_turns, prompt_style
+    )
 
     console.rule("[bold blue]openspiel-arena[/bold blue]")
     console.print(f"Game              : [cyan]{game_obj.name}[/cyan]")

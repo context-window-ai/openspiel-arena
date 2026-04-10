@@ -77,6 +77,7 @@ class LLMAgentConfig:
     fallback_mode: FallbackMode | str = FallbackMode.RANDOM
     temperature: float = 0.7
     max_tokens: int = 500
+    reasoning_effort: str | None = None  # 'low', 'medium', 'high' (o-series / gpt-5.x)
     debug_dir: str | Path | None = None
 
     def __post_init__(self) -> None:
@@ -114,6 +115,7 @@ class LLMAgentConfig:
             else self.fallback_mode,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
+            "reasoning_effort": self.reasoning_effort,
             "debug_dir": str(self.debug_dir) if self.debug_dir else None,
         }
 
@@ -369,7 +371,7 @@ class LLMAgent(BaseAgent):
             The raw response text.
         """
         try:
-            response = self._client.chat.completions.create(
+            call_kwargs: dict = dict(
                 model=self._config.model,
                 messages=[
                     {
@@ -378,9 +380,14 @@ class LLMAgent(BaseAgent):
                     },
                     {"role": "user", "content": prompt},
                 ],
-                temperature=self._config.temperature,
                 max_tokens=self._config.max_tokens,
             )
+            if self._config.reasoning_effort:
+                call_kwargs["reasoning_effort"] = self._config.reasoning_effort
+                call_kwargs.pop("max_tokens", None)  # no cap: let reasoning finish
+            else:
+                call_kwargs["temperature"] = self._config.temperature
+            response = self._client.chat.completions.create(**call_kwargs)
 
             content = response.choices[0].message.content
             if content is None:
