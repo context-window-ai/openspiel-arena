@@ -228,6 +228,7 @@ class LLMAgent(BaseAgent):
 
     def reset(self) -> None:
         """Reset the agent state for a new game."""
+        super().reset()
         self._turn_history = []
         self._game_history = []
 
@@ -297,6 +298,10 @@ class LLMAgent(BaseAgent):
                 f"LLM returned invalid action. Raw response: {raw_response[:200]!r}. "
                 f"Using fallback: {chosen_action}"
             )
+
+        # Expose prompt/response for transcript capture
+        self.last_prompt = prompt
+        self.last_response = raw_response
 
         # Record turn
         record = TurnRecord(

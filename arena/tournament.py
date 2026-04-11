@@ -136,6 +136,7 @@ def run_tournament(
     *,
     results_dir: str | Path | None = None,
     run_id: str | None = None,
+    transcripts_dir: str | Path | None = None,
 ) -> tuple[TournamentResult, TournamentManifest]:
     """Run a full round-robin tournament with side swaps.
 
@@ -157,6 +158,8 @@ def run_tournament(
         If None, results are not persisted to disk (manifest still tracks them).
     run_id:
         Unique identifier for this run. Auto-generated if omitted.
+    transcripts_dir:
+        If provided, per-move transcript JSONs are written to this directory.
 
     Returns
     -------
@@ -208,7 +211,8 @@ def run_tournament(
             logger.debug(f"Match {match_num}/{total_matches}: {agent_a.name} vs {agent_b.name}")
 
             try:
-                result = run_match(agent_a, agent_b, game)
+                save_td = str(transcripts_dir) if transcripts_dir else None
+                result = run_match(agent_a, agent_b, game, save_transcript_dir=save_td)
                 tournament_result.matches.append(result)
 
                 # Write to CSV immediately so data isn't lost on crash

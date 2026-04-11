@@ -202,6 +202,19 @@ def _build_agents(
     help="Prompt template style for LLM agents.",
 )
 @click.option(
+    "--save-transcripts",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Save per-move transcript JSONs for every match.",
+)
+@click.option(
+    "--transcripts-dir",
+    default="transcripts/",
+    show_default=True,
+    help="Directory for transcript JSON files (used with --save-transcripts).",
+)
+@click.option(
     "--log-level",
     default=None,
     help="Logging verbosity (default: $ARENA_LOG_LEVEL or INFO).",
@@ -220,6 +233,8 @@ def main(
     reasoning_effort: str | None,
     memory_turns: int,
     prompt_style: str,
+    save_transcripts: bool,
+    transcripts_dir: str,
     log_level: str | None,
     run_id: str | None,
 ) -> None:
@@ -262,6 +277,7 @@ def main(
         rounds_per_pairing=rounds_per_pairing,
         results_dir=out_dir,
         run_id=run_id,
+        transcripts_dir=transcripts_dir if save_transcripts else None,
     )
 
     # ------------------------------------------------------------------

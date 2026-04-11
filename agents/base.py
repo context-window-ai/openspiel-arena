@@ -93,6 +93,9 @@ class BaseAgent(ABC):
 
     def __init__(self, name: str) -> None:
         self.name = name
+        # Optional: most recent LLM prompt/response (set after each select_action call)
+        self.last_prompt: str | None = None
+        self.last_response: str | None = None
 
     @abstractmethod
     def select_action(
@@ -138,6 +141,14 @@ class BaseAgent(ABC):
         """
         legal_actions = list(state.legal_actions())
         return self.select_action(state, legal_actions, context=None)
+
+    def reset(self) -> None:
+        """Reset agent state for a new game.
+
+        Subclasses may override to clear per-game caches (e.g. turn history).
+        """
+        self.last_prompt = None
+        self.last_response = None
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(name={self.name!r})"
